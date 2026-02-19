@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Canvas — Financial Literacy Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --border: #2a2a3a;
+    --accent: #00e87a;
+    --accent2: #7c3aed;
+    --accent3: #f59e0b;
+    --danger: #ef4444;
+    --text: #f0f0f5;
+    --text-muted: #6b6b80;
+    --text-dim: #9999aa;
+    --radius: 18px;
+    --radius-sm: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* Phone frame */
+  .phone {
+    width: min(390px, 100vw);
+    height: min(844px, 100vh);
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+    border-radius: min(44px, 0px);
+    box-shadow: 0 40px 100px rgba(0,0,0,0.8), inset 0 0 0 1px #222;
+  }
+
+  /* Screens */
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateX(30px);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .screen.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(0);
+  }
+  .screen.exit-left {
+    opacity: 0;
+    transform: translateX(-30px);
+    pointer-events: none;
+  }
+
+  /* ---- ONBOARDING / PROFILE SCREEN ---- */
+  #screen-onboard {
+    background: linear-gradient(160deg, #0a0a0f 0%, #0f0f1a 60%, #12082a 100%);
+    padding: 60px 28px 40px;
+    gap: 0;
+  }
+
+  .onboard-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+    margin-bottom: 48px;
+  }
+  .onboard-logo span { color: var(--text-muted); font-weight: 400; }
+
+  .onboard-question {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+  .onboard-sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+  }
+
+  .profile-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  .profile-opt {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .profile-opt .opt-icon { font-size: 28px; margin-bottom: 8px; }
+  .profile-opt .opt-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .profile-opt .opt-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  .profile-opt:hover, .profile-opt.selected {
+    border-color: var(--accent);
+    background: rgba(0, 232, 122, 0.08);
+  }
+  .profile-opt.selected .opt-label { color: var(--accent); }
+
+  .btn-primary {
+    width: 100%;
+    padding: 18px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: -0.3px;
+  }
+  .btn-primary:hover { background: #00ff88; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* ---- HUD / HEADER ---- */
+  .hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .hud-streak {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--accent3);
+  }
+
+  .hud-xp {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent);
+    background: rgba(0,232,122,0.1);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(0,232,122,0.2);
+  }
+
+  .hearts {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+  }
+  .heart { font-size: 17px; transition: all 0.3s; }
+  .heart.lost { filter: grayscale(1); opacity: 0.3; }
+
+  /* Progress bar */
+  .progress-wrap {
+    padding: 10px 20px 0;
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+  .progress-bar {
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #00ffaa);
+    border-radius: 100px;
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 10px rgba(0,232,122,0.5);
+  }
+
+  /* ---- QUESTION SCREEN ---- */
+  #screen-question {
+    background: var(--bg);
+  }
+
+  .question-body {
+    flex: 1;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+  }
+
+  .q-category {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    opacity: 0.7;
+  }
+
+  .q-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--text);
+  }
+
+  .q-context {
+    background: var(--surface);
+    border-left: 3px solid var(--accent2);
+    padding: 14px 16px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .q-context strong { color: var(--text); }
+
+  .answer-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .answer-opt {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .answer-opt:active { transform: scale(0.98); }
+
+  .opt-letter {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .opt-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.4;
+  }
+
+  .answer-opt.correct {
+    border-color: var(--accent);
+    background: rgba(0,232,122,0.08);
+    animation: pulse-green 0.4s ease;
+  }
+  .answer-opt.correct .opt-letter {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .answer-opt.wrong {
+    border-color: var(--danger);
+    background: rgba(239,68,68,0.08);
+    animation: shake 0.4s ease;
+  }
+  .answer-opt.wrong .opt-letter {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
+  }
+  .answer-opt.disabled { pointer-events: none; opacity: 0.5; }
+  .answer-opt.disabled.correct { opacity: 1; }
+
+  @keyframes pulse-green {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    60% { transform: translateX(6px); }
+  }
+
+  /* Feedback toast */
+  .feedback-toast {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px 20px 36px;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1);
+    z-index: 10;
+  }
+  .feedback-toast.show { transform: translateY(0); }
+  .feedback-toast.correct-fb { background: linear-gradient(180deg, transparent, rgba(0,232,122,0.15) 20%, var(--bg)); }
+  .feedback-toast.wrong-fb { background: linear-gradient(180deg, transparent, rgba(239,68,68,0.1) 20%, var(--bg)); }
+
+  .feedback-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .feedback-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+  }
+  .feedback-title.correct-text { color: var(--accent); }
+  .feedback-title.wrong-text { color: var(--danger); }
+
+  .feedback-explanation {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+  .feedback-explanation strong { color: var(--text); }
+
+  .btn-continue {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-continue.correct-btn { background: var(--accent); color: #000; }
+  .btn-continue.wrong-btn { background: var(--danger); color: #fff; }
+
+  /* XP Pop */
+  .xp-pop {
+    position: absolute;
+    top: 70px;
+    right: 20px;
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--accent);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(0);
+  }
+  .xp-pop.animate {
+    animation: xp-float 1.2s ease forwards;
+  }
+  @keyframes xp-float {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    50% { opacity: 1; transform: translateY(-30px) scale(1.2); }
+    100% { opacity: 0; transform: translateY(-60px) scale(0.8); }
+  }
+
+  /* ---- DASHBOARD SCREEN ---- */
+  #screen-dashboard {
+    background: var(--bg);
+  }
+
+  .dash-header {
+    padding: 24px 20px 16px;
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+  .dash-greeting {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+  .dash-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .dash-body {
+    flex: 1;
+    padding: 0 20px 100px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .stat-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-val.green { color: var(--accent); }
+  .stat-val.amber { color: var(--accent3); }
+  .stat-val.purple { color: #a78bfa; }
+  .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+
+  .section-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .path-card {
+    background: linear-gradient(135deg, var(--surface) 0%, #1a1a2e 100%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .path-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+  .path-card:active { transform: scale(0.99); }
+
+  .path-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .path-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+  .badge-active { background: rgba(0,232,122,0.15); color: var(--accent); border: 1px solid rgba(0,232,122,0.3); }
+  .badge-locked { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+
+  .path-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .path-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px; }
+
+  .path-progress-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .path-prog-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+  .path-prog-fill {
+    height: 100%;
+    border-radius: 100px;
+    background: linear-gradient(90deg, var(--accent), #00ffaa);
+  }
+  .path-prog-text { font-size: 12px; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+
+  .leaderboard-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .lb-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .lb-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .lb-school { font-size: 11px; color: var(--text-muted); }
+
+  .lb-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-row.you { background: rgba(0,232,122,0.06); }
+  .lb-rank {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    width: 24px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+  .lb-rank.top { color: var(--accent3); }
+  .lb-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .lb-info { flex: 1; }
+  .lb-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .lb-univ { font-size: 11px; color: var(--text-muted); }
+  .lb-xp {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 10px 0 24px;
+    z-index: 20;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    padding: 6px 0;
+    transition: all 0.2s;
+  }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 10px; font-weight: 600; color: var(--text-muted); }
+  .nav-item.active .nav-label { color: var(--accent); }
+
+  /* CTA Card */
+  .cta-card {
+    background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(0,232,122,0.1));
+    border: 1px solid rgba(124,58,237,0.4);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .cta-tag {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #a78bfa;
+  }
+  .cta-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .cta-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+  .btn-cta {
+    padding: 14px;
+    background: #7c3aed;
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .btn-cta:hover { background: #6d28d9; }
+
+  /* Streak modal */
+  .modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: flex-end;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.show {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .modal-sheet {
+    width: 100%;
+    background: var(--surface);
+    border-radius: 28px 28px 0 0;
+    padding: 32px 24px 48px;
+    border-top: 1px solid var(--border);
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .modal-overlay.show .modal-sheet { transform: translateY(0); }
+  .modal-emoji { font-size: 64px; line-height: 1; margin-bottom: 4px; }
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .modal-sub { font-size: 14px; color: var(--text-muted); line-height: 1.6; max-width: 280px; }
+  .modal-stat-row {
+    display: flex;
+    gap: 14px;
+    margin: 8px 0;
+  }
+  .modal-stat {
+    flex: 1;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    text-align: center;
+  }
+  .modal-stat-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .modal-stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* Confetti */
+  .confetti-container {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 200;
+  }
+  .confetti-piece {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    animation: confetti-fall linear forwards;
+  }
+  @keyframes confetti-fall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(900px) rotate(720deg); opacity: 0; }
+  }
+
+  /* Scroll fix */
+  .question-body::-webkit-scrollbar,
+  .dash-body::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+
+<div class="phone" id="app">
+
+  <!-- ============= SCREEN: ONBOARDING ============= -->
+  <div class="screen active" id="screen-onboard">
+    <div class="onboard-logo">canvas <span>× DU</span></div>
+    <div class="onboard-question">What's your money situation right now?</div>
+    <div class="onboard-sub">We'll personalize your path based on where you are.</div>
+
+    <div class="profile-options" id="profile-opts">
+      <div class="profile-opt" onclick="selectProfile(this,'student')" data-val="student">
+        <div class="opt-icon">🎓</div>
+        <div class="opt-label">Full-time Student</div>
+        <div class="opt-sub">No income yet</div>
+      </div>
+      <div class="profile-opt" onclick="selectProfile(this,'working')" data-val="working">
+        <div class="opt-icon">💼</div>
+        <div class="opt-label">Working Student</div>
+        <div class="opt-sub">Part-time job</div>
+      </div>
+      <div class="profile-opt" onclick="selectProfile(this,'loans')" data-val="loans">
+        <div class="opt-icon">📚</div>
+        <div class="opt-label">Dealing with Loans</div>
+        <div class="opt-sub">Student debt stress</div>
+      </div>
+      <div class="profile-opt" onclick="selectProfile(this,'career')" data-val="career">
+        <div class="opt-icon">🚀</div>
+        <div class="opt-label">Starting Career</div>
+        <div class="opt-sub">First real paycheck</div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="start-btn" onclick="startGame()" disabled>
+      Start My Path →
+    </button>
+
+    <div style="margin-top:18px; text-align:center; font-size:12px; color:var(--text-muted)">
+      Free forever · No credit card · Powered by Canvas Credit Union
+    </div>
+  </div>
+
+  <!-- ============= SCREEN: QUESTION ============= -->
+  <div class="screen" id="screen-question">
+    <div class="hud">
+      <div class="hud-streak">🔥 <span id="streak-count">1</span></div>
+      <div class="hearts" id="hearts">
+        <span class="heart">❤️</span>
+        <span class="heart">❤️</span>
+        <span class="heart">❤️</span>
+      </div>
+      <div class="hud-xp">⚡ <span id="xp-display">0</span> XP</div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="question-body" id="question-body">
+      <!-- injected by JS -->
+    </div>
+
+    <div class="feedback-toast" id="feedback-toast">
+      <div class="feedback-inner">
+        <div class="feedback-title" id="fb-title"></div>
+        <div class="feedback-explanation" id="fb-explanation"></div>
+        <button class="btn-continue" id="fb-continue" onclick="nextQuestion()">Continue</button>
+      </div>
+    </div>
+
+    <div class="xp-pop" id="xp-pop">+10 XP</div>
+  </div>
+
+  <!-- ============= SCREEN: DASHBOARD ============= -->
+  <div class="screen" id="screen-dashboard">
+    <div class="dash-header">
+      <div class="dash-greeting">Welcome back 👋</div>
+      <div class="dash-name" id="dash-name">Future Earner</div>
+    </div>
+
+    <div class="dash-body">
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val amber">🔥 <span id="dash-streak">1</span></div>
+          <div class="stat-label">Day Streak</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val green">⚡ <span id="dash-xp">0</span></div>
+          <div class="stat-label">Total XP</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val purple">#<span id="dash-rank">47</span></div>
+          <div class="stat-label">Rank</div>
+        </div>
+      </div>
+
+      <!-- Learning Paths -->
+      <div class="section-label">Your Path</div>
+
+      <div class="path-card" onclick="goToQuestion()">
+        <div class="path-header">
+          <span class="path-badge badge-active">Active</span>
+          <span style="font-size:20px">💳</span>
+        </div>
+        <div class="path-title">Credit & Debt Basics</div>
+        <div class="path-desc">Master how credit scores work, minimum payments, and the true cost of debt before your first card.</div>
+        <div class="path-progress-row">
+          <div class="path-prog-bar"><div class="path-prog-fill" id="path-fill" style="width:20%"></div></div>
+          <div class="path-prog-text" id="path-text">1/5 done</div>
+        </div>
+      </div>
+
+      <div class="path-card" style="opacity:0.6">
+        <div class="path-header">
+          <span class="path-badge badge-locked">🔒 Locked</span>
+          <span style="font-size:20px">📈</span>
+        </div>
+        <div class="path-title">Investing 101</div>
+        <div class="path-desc">Compound interest, index funds, and why starting at 22 beats starting at 32.</div>
+        <div class="path-progress-row">
+          <div class="path-prog-bar"><div class="path-prog-fill" style="width:0%"></div></div>
+          <div class="path-prog-text">0/6 done</div>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="section-label">This Week's League 🏆</div>
+
+      <div class="leaderboard-card">
+        <div class="lb-header">
+          <div>
+            <div class="lb-title">Diamond League</div>
+            <div class="lb-school">Top students nationally</div>
+          </div>
+          <div style="font-size:24px">💎</div>
+        </div>
+        <div class="lb-row">
+          <div class="lb-rank top">1</div>
+          <div class="lb-avatar" style="background:#fef3c7">🧑‍💻</div>
+          <div class="lb-info">
+            <div class="lb-name">Jordan M.</div>
+            <div class="lb-univ">UC San Diego</div>
+          </div>
+          <div class="lb-xp">2,840 XP</div>
+        </div>
+        <div class="lb-row">
+          <div class="lb-rank top">2</div>
+          <div class="lb-avatar" style="background:#e0e7ff">👩‍🎓</div>
+          <div class="lb-info">
+            <div class="lb-name">Priya K.</div>
+            <div class="lb-univ">UT Austin</div>
+          </div>
+          <div class="lb-xp">2,310 XP</div>
+        </div>
+        <div class="lb-row you">
+          <div class="lb-rank">3</div>
+          <div class="lb-avatar" style="background:rgba(0,232,122,0.2)">⭐</div>
+          <div class="lb-info">
+            <div class="lb-name">You</div>
+            <div class="lb-univ">Your School</div>
+          </div>
+          <div class="lb-xp" id="dash-xp-lb">0 XP</div>
+        </div>
+        <div class="lb-row">
+          <div class="lb-rank">4</div>
+          <div class="lb-avatar" style="background:#fce7f3">😎</div>
+          <div class="lb-info">
+            <div class="lb-name">Marcus T.</div>
+            <div class="lb-univ">Michigan State</div>
+          </div>
+          <div class="lb-xp">890 XP</div>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div class="cta-card">
+        <div class="cta-tag">Canvas Credit Union</div>
+        <div class="cta-title">You're ready for your first account 🎉</div>
+        <div class="cta-desc">Complete 5 lessons and open a Canvas Checking account with no fees, no minimums, and a 4.2% APY savings rate.</div>
+        <button class="btn-cta">Open Free Account →</button>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-item active">
+        <div class="nav-icon">🏠</div>
+        <div class="nav-label">Home</div>
+      </div>
+      <div class="nav-item" onclick="goToQuestion()">
+        <div class="nav-icon">⚡</div>
+        <div class="nav-label">Learn</div>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">🏆</div>
+        <div class="nav-label">League</div>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">👤</div>
+        <div class="nav-label">Profile</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confetti layer -->
+  <div class="confetti-container" id="confetti"></div>
+
+  <!-- Streak modal -->
+  <div class="modal-overlay" id="streak-modal">
+    <div class="modal-sheet">
+      <div class="modal-emoji">🔥</div>
+      <div class="modal-title">Streak's On Fire!</div>
+      <div class="modal-sub">You've kept your learning streak alive. Every day compounds — just like interest.</div>
+      <div class="modal-stat-row">
+        <div class="modal-stat">
+          <div class="modal-stat-val" id="modal-streak">1</div>
+          <div class="modal-stat-label">Day Streak</div>
+        </div>
+        <div class="modal-stat">
+          <div class="modal-stat-val" id="modal-xp">0</div>
+          <div class="modal-stat-label">Total XP</div>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="closeModal()" style="margin-top:8px">Keep Going →</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---- STATE ----
+let xp = 0;
+let streak = 1;
+let hearts = 3;
+let currentQ = 0;
+let questionsAnswered = 0;
+let selectedProfile = null;
+let answeredCurrentQ = false;
+
+// ---- QUESTIONS (adaptive by profile, shown in sequence) ----
+const questions = [
+  {
+    category: "Credit Basics",
+    text: "Your credit card has a $500 balance. The minimum payment is $25. What happens if you only pay the minimum every month?",
+    context: "You're a <strong>working student</strong> with your first credit card. The APR is 24%.",
+    options: [
+      { text: "I'll pay it off in about 2 years", correct: false },
+      { text: "Interest compounds — it could take 3+ years and cost $200+ extra", correct: true },
+      { text: "The balance stays the same as long as I pay on time", correct: false },
+      { text: "My credit score drops automatically", correct: false }
+    ],
+    explanation: "<strong>Correct.</strong> At 24% APR, a $500 balance with $25 minimum payments takes roughly 3+ years and over $200 in interest. The minimum is designed to keep you paying — not to get you out of debt.",
+    wrongExplanation: "Not quite. Interest compounds monthly on the unpaid balance. That $500 could cost you $200+ extra and take over 3 years to pay off. <strong>Paying more than the minimum is one of the highest-ROI financial moves you can make.</strong>"
+  },
+  {
+    category: "Credit Score",
+    text: "Which action has the BIGGEST positive impact on your credit score over time?",
+    context: "You're building your credit history from scratch. Your score is currently <strong>652</strong>.",
+    options: [
+      { text: "Applying for several credit cards at once", correct: false },
+      { text: "Paying every bill on time, every month", correct: true },
+      { text: "Keeping a high credit card balance", correct: false },
+      { text: "Closing old accounts to simplify", correct: false }
+    ],
+    explanation: "<strong>That's it.</strong> Payment history is 35% of your FICO score — the single largest factor. Even one missed payment can drop your score 50-100 points and stay on your report for 7 years.",
+    wrongExplanation: "Payment history is 35% of your FICO score — the biggest factor. Applying for multiple cards creates 'hard inquiries' that temporarily hurt your score. Closing old accounts reduces your credit age. <strong>On-time payments are the foundation.</strong>"
+  },
+  {
+    category: "Compound Interest",
+    text: "Alex invests $1,000 at 22. Riley invests $1,000 at 32. Both earn 7% annually and stop at 65. Who ends up with more money?",
+    context: "This is the question that changes how people think about time and money.",
+    options: [
+      { text: "Riley — they contributed the same amount", correct: false },
+      { text: "Alex — time in the market beats timing the market", correct: true },
+      { text: "They end up with the same amount", correct: false },
+      { text: "Depends on when the market performs best", correct: false }
+    ],
+    explanation: "<strong>Alex wins — by a lot.</strong> Alex's $1,000 grows to ~$21,000. Riley's grows to ~$10,600. Those extra 10 years nearly double the result. Einstein reportedly called compound interest the eighth wonder of the world.",
+    wrongExplanation: "Alex ends up with nearly double — about $21,000 vs Riley's $10,600. Those 10 extra years almost double the outcome. <strong>This is why every year you wait to invest costs you more than the year before.</strong>"
+  },
+  {
+    category: "Budgeting",
+    text: "You earn $2,400/month after tax. What's the 50/30/20 rule telling you to spend on 'wants' like food out, subscriptions, and fun?",
+    context: "You just landed your first job. Your rent is $900. Time to build a real budget.",
+    options: [
+      { text: "$480 per month (20%)", correct: false },
+      { text: "$720 per month (30%)", correct: true },
+      { text: "$1,200 per month (50%)", correct: false },
+      { text: "$240 per month (10%)", correct: false }
+    ],
+    explanation: "<strong>$720 is right.</strong> The 50/30/20 rule: 50% on needs ($1,200), 30% on wants ($720), 20% on savings/debt ($480). It's a flexible starting framework — not a strict rule.",
+    wrongExplanation: "<strong>The answer is $720 (30%).</strong> 50/30/20 means: 50% needs, 30% wants, 20% savings/debt payoff. On $2,400, that's $1,200 / $720 / $480. Most people overspend on wants and underfund savings."
+  },
+  {
+    category: "Emergency Fund",
+    text: "How much should you have in an emergency fund before you start investing?",
+    context: "You have $3,000 saved. Your monthly expenses are ~$1,800. What's the smart move?",
+    options: [
+      { text: "Whatever's left after paying bills", correct: false },
+      { text: "At least 3-6 months of expenses (~$5,400–$10,800)", correct: true },
+      { text: "$1,000 is plenty for a student", correct: false },
+      { text: "You don't need one if you have a credit card", correct: false }
+    ],
+    explanation: "<strong>Exactly right.</strong> 3-6 months of expenses creates a financial buffer so a car repair or medical bill doesn't derail your life or force you into debt. At $1,800/month, you're targeting $5,400–$10,800 in a high-yield savings account.",
+    wrongExplanation: "<strong>The target is 3-6 months of expenses.</strong> For you, that's $5,400–$10,800. A credit card as backup means paying 24% interest on emergencies. Build the fund first — then invest. You're not far off with $3,000!"
+  }
+];
+
+// ---- PROFILE SELECTION ----
+function selectProfile(el, val) {
+  document.querySelectorAll('.profile-opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedProfile = val;
+  document.getElementById('start-btn').disabled = false;
+}
+
+function startGame() {
+  showScreen('screen-question');
+  renderQuestion(0);
+}
+
+// ---- SCREEN NAVIGATION ----
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => {
+    if (s.classList.contains('active')) {
+      s.classList.remove('active');
+      s.classList.add('exit-left');
+      setTimeout(() => s.classList.remove('exit-left'), 400);
+    }
+  });
+  setTimeout(() => {
+    document.getElementById(id).classList.add('active');
+  }, 50);
+}
+
+function goToQuestion() {
+  answeredCurrentQ = false;
+  hideFeedback();
+  showScreen('screen-question');
+  renderQuestion(currentQ);
+}
+
+// ---- RENDER QUESTION ----
+function renderQuestion(index) {
+  if (index >= questions.length) {
+    showDashboard();
+    return;
+  }
+
+  const q = questions[index];
+  answeredCurrentQ = false;
+  hideFeedback();
+
+  // Progress
+  const pct = (index / questions.length) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+
+  // Update HUD
+  document.getElementById('xp-display').textContent = xp;
+  document.getElementById('streak-count').textContent = streak;
+  updateHearts();
+
+  const letters = ['A','B','C','D'];
+  const shuffled = [...q.options].map((o,i) => ({...o, origIndex: i}));
+
+  const html = `
+    <div class="q-category">${q.category}</div>
+    <div class="q-text">${q.text}</div>
+    <div class="q-context">${q.context}</div>
+    <div class="answer-options" id="answer-opts">
+      ${shuffled.map((opt, i) => `
+        <div class="answer-opt" onclick="selectAnswer(this, ${opt.correct})" data-correct="${opt.correct}">
+          <div class="opt-letter">${letters[i]}</div>
+          <div class="opt-text">${opt.text}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const body = document.getElementById('question-body');
+  body.style.opacity = 0;
+  body.innerHTML = html;
+  setTimeout(() => { body.style.opacity = 1; body.style.transition = 'opacity 0.3s'; }, 50);
+}
+
+// ---- ANSWER SELECTION ----
+function selectAnswer(el, isCorrect) {
+  if (answeredCurrentQ) return;
+  answeredCurrentQ = true;
+
+  // Disable all
+  document.querySelectorAll('.answer-opt').forEach(o => o.classList.add('disabled'));
+
+  const q = questions[currentQ];
+
+  if (isCorrect) {
+    el.classList.add('correct');
+    xp += 10;
+    questionsAnswered++;
+
+    // XP pop
+    const pop = document.getElementById('xp-pop');
+    pop.classList.remove('animate');
+    void pop.offsetWidth;
+    pop.classList.add('animate');
+
+    showFeedback(true, '🎉 Correct!', q.explanation);
+  } else {
+    el.classList.add('wrong');
+    hearts = Math.max(0, hearts - 1);
+    updateHearts();
+
+    // Show correct answer
+    document.querySelectorAll('.answer-opt').forEach(o => {
+      if (o.dataset.correct === 'true') o.classList.add('correct');
+    });
+
+    showFeedback(false, '❌ Not quite', q.wrongExplanation);
+  }
+
+  document.getElementById('xp-display').textContent = xp;
+}
+
+// ---- FEEDBACK ----
+function showFeedback(correct, title, explanation) {
+  const toast = document.getElementById('feedback-toast');
+  const titleEl = document.getElementById('fb-title');
+  const explEl = document.getElementById('fb-explanation');
+  const btn = document.getElementById('fb-continue');
+
+  titleEl.textContent = title;
+  titleEl.className = 'feedback-title ' + (correct ? 'correct-text' : 'wrong-text');
+  explEl.innerHTML = explanation;
+  btn.className = 'btn-continue ' + (correct ? 'correct-btn' : 'wrong-btn');
+  btn.textContent = currentQ < questions.length - 1 ? 'Continue' : 'See Results';
+
+  toast.className = 'feedback-toast show ' + (correct ? 'correct-fb' : 'wrong-fb');
+}
+
+function hideFeedback() {
+  document.getElementById('feedback-toast').className = 'feedback-toast';
+}
+
+function nextQuestion() {
+  currentQ++;
+  if (currentQ >= questions.length) {
+    showDashboard();
+  } else {
+    answeredCurrentQ = false;
+    hideFeedback();
+    renderQuestion(currentQ);
+  }
+}
+
+function updateHearts() {
+  const heartEls = document.querySelectorAll('.heart');
+  heartEls.forEach((h, i) => {
+    if (i >= hearts) h.classList.add('lost');
+    else h.classList.remove('lost');
+  });
+}
+
+// ---- DASHBOARD ----
+function showDashboard() {
+  const names = {
+    student: 'Student Grinder 🎓',
+    working: 'Working Pro 💼',
+    loans: 'Debt Slayer 📚',
+    career: 'Career Starter 🚀'
+  };
+
+  document.getElementById('dash-name').textContent = names[selectedProfile] || 'Future Earner';
+  document.getElementById('dash-streak').textContent = streak;
+  document.getElementById('dash-xp').textContent = xp;
+  document.getElementById('dash-xp-lb').textContent = xp + ' XP';
+  document.getElementById('path-fill').style.width = Math.min(100, (questionsAnswered / questions.length) * 100) + '%';
+  document.getElementById('path-text').textContent = questionsAnswered + '/' + questions.length + ' done';
+
+  // Rank based on XP
+  const rank = xp >= 40 ? 3 : xp >= 20 ? 8 : 12;
+  document.getElementById('dash-rank').textContent = rank;
+
+  showScreen('screen-dashboard');
+
+  // Show streak modal if completed
+  if (questionsAnswered >= questions.length) {
+    setTimeout(() => {
+      launchConfetti();
+      document.getElementById('modal-streak').textContent = streak;
+      document.getElementById('modal-xp').textContent = xp;
+      document.getElementById('streak-modal').classList.add('show');
+    }, 600);
+  }
+}
+
+function closeModal() {
+  document.getElementById('streak-modal').classList.remove('show');
+}
+
+// ---- CONFETTI ----
+function launchConfetti() {
+  const container = document.getElementById('confetti');
+  container.innerHTML = '';
+  const colors = ['#00e87a','#7c3aed','#f59e0b','#ef4444','#60a5fa','#f0f0f5'];
+  for (let i = 0; i < 60; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.cssText = `
+      left: ${Math.random() * 100}%;
+      top: -10px;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      width: ${4 + Math.random() * 8}px;
+      height: ${4 + Math.random() * 8}px;
+      animation-duration: ${1.5 + Math.random() * 2}s;
+      animation-delay: ${Math.random() * 0.8}s;
+      border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+    `;
+    container.appendChild(piece);
+  }
+  setTimeout(() => container.innerHTML = '', 4000);
+}
+</script>
+</body>
+</html>
